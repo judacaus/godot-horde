@@ -1,0 +1,115 @@
+# Continuous integration: core unit tests, Linux build and headless Godot tests.
+# Windows and macOS builds are planned for the next milestone (see docs/PLAN.md).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Core unit tests (doctest)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+
+      - name: Install SCons
+        run: python -m pip install scons==4.11.1
+
+      - name: Run tests
+        run: scons tests -j"$(nproc)"
+
+      - name: Run tests with ASan + UBSan
+        run: scons tests sanitize=yes -j"$(nproc)"
+
+  build-linux:
+    name: Build Linux x86_64 (${{ matrix.target-type }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target-type: [template_debug, template_release]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Setup godot-cpp
+        uses: ./godot-cpp/.github/actions/setup-godot-cpp
+        with:
+          platform: linux
+
+      - name: Restore .scons_cache
+        uses: ./godot-cpp/.github/actions/godot-cache-restore
+        with:
+          scons-cache: ${{ github.workspace }}/.scons-cache/
+          cache-name: linux_x86_64_single_${{ matrix.target-type }}
+
+      - name: Build GDExtension
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
+        run: scons target=${{ matrix.target-type }} platform=linux arch=x86_64 -j"$(nproc)"
+
+      - name: Save .scons_cache
+        uses: ./godot-cpp/.github/actions/godot-cache-save
+        with:
+          scons-cache: ${{ github.workspace }}/.scons-cache/
+          cache-name: linux_x86_64_single_${{ matrix.target-type }}
+
+      - name: Upload library
+        uses: actions/upload-artifact@v7
+        with:
+          name: horde-linux-x86_64-${{ matrix.target-type }}
+          path: project/addons/horde/bin/linux/
+          if-no-files-found: error
+
+  godot-tests:
+    name: Headless tests (Godot ${{ matrix.godot }})
+    needs: build-linux
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # 4.7.2: version under test. 4.4.1: oldest supported version (compatibility_minimum).
+        godot: ["4.7.2", "4.4.1"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download library
+        uses: actions/download-artifact@v7
+        with:
+          name: horde-linux-x86_64-template_debug
+          path: project/addons/horde/bin/linux/
+
+      - name: Cache Godot
+        uses: actions/cache@v5
+        with:
+          path: .tools/godot-${{ matrix.godot }}
+          key: godot-${{ matrix.godot }}-linux-x86_64
+
+      - name: Fetch Godot and GUT
+        run: |
+          echo "GODOT=$(tools/fetch_godot.sh ${{ matrix.godot }} | tail -n 1)" >> "$GITHUB_ENV"
+          tools/install_gut.sh ${{ matrix.godot }}
+
+      - name: Check that the extension loads
+        run: |
+          "$GODOT" --headless --path project --import >/dev/null 2>&1 || true
+          "$GODOT" --headless --path project --script res://tests/check_extension_loads.gd
+
+      - name: Run GUT tests
+        run: tools/run_godot_tests.sh "$GODOT"
