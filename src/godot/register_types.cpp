@@ -4,12 +4,17 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
+#include "godot/horde_2d.h"
+#include "godot/horde_type.h"
+
 using namespace godot;
 
 void initialize_horde_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
+	GDREGISTER_CLASS(HordeType);
+	GDREGISTER_CLASS(Horde2D);
 }
 
 void uninitialize_horde_module(ModuleInitializationLevel p_level) {
