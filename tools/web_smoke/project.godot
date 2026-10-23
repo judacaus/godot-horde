@@ -1,0 +1,12 @@
+config_version=5
+
+[application]
+
+config/name="horde web smoke"
+config/features=PackedStringArray("4.4")
+run/main_scene="res://web_smoke.tscn"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
