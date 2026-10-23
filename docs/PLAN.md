@@ -63,8 +63,9 @@ contacts, fixed timestep with render interpolation, deterministic seed, update m
 
 ### Milestone 3 proposal: hardening and platforms
 
-1. **Windows and macOS** in CI (build + headless GUT run), and adapt the template's
-   `make_build.yml` (manual all-platform build) to the add-on layout.
+1. **Windows and macOS** in CI (build + headless GUT run), and a first run of the
+   adapted `make_build.yml` (manual all-platform build, added in this PR but not
+   exercised yet because `workflow_dispatch` needs it on `main`).
 2. **Web build in CI**: `platform=web threads=no` with the template's Emscripten
    version, plus `tools/web_smoke/run.sh` (export + headless Chromium, no COOP/COEP
    headers) against the 4.4 and 4.7 templates. A `threads=yes` build for threaded
@@ -189,7 +190,8 @@ single `index.wasm` (39,514,754 bytes): about +6 MB before compression, plus our
   Templates use 3.1.64 for Godot 4.3/4.4, 4.0.10 for 4.5 and 4.0.20 for 4.6/4.7
   ([build-containers](https://github.com/godotengine/build-containers) branches
   4.3–4.7, `Dockerfile.web`). Our 4.0.20 build also loaded in 4.4.1, but that is a
-  single data point (the core only uses `<vector>`, `<deque>` and `<cmath>`);
+  single data point (the extension uses little of the C++ standard library:
+  containers, `<algorithm>`, `<cmath>`);
   #94537 shows other libraries breaking on C++ runtime mismatches. CI should test
   every supported template version.
 - **Limitations to document for users**: no threads (fine for v0.1, which is
