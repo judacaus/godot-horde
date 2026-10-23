@@ -77,9 +77,21 @@ Run the following command to download godot-cpp:
     git submodule update --init --recursive""")
     sys.exit(1)
 
+# godot-cpp writes its generated bindings to a single folder (godot-cpp/gen) and bakes
+# the pointer size into them, but does not regenerate when switching between 32-bit
+# (web, *32 arches) and 64-bit targets. A stale folder compiles fine and crashes at
+# runtime, so remember the bitness of the last build and force a regeneration.
+bindings_bits_marker = "godot-cpp/gen/.horde_bindings_bits"
+target_bits = "32" if ARGUMENTS.get("platform") == "web" or "32" in ARGUMENTS.get("arch", "") else "64"
+previous_bits = open(bindings_bits_marker).read().strip() if os.path.isfile(bindings_bits_marker) else ""
+if previous_bits != target_bits:
+    env["generate_bindings"] = True
+
 env = SConscript("godot-cpp/SConstruct", {"api_version": api_version, "env": env, "customs": customs})
 
 env.Append(CPPPATH=["src/"])
+# Keep our object files apart per platform/target/arch, like godot-cpp does for its own.
+env["SHOBJSUFFIX"] = env["suffix"] + env["SHOBJSUFFIX"]
 
 # The core is engine-agnostic C++; compile it with deterministic floating point flags.
 core_env = env.Clone()
@@ -107,6 +119,14 @@ library = env.SharedLibrary(
 )
 
 copy = env.Install("{}/{}/".format(addon_bin_dir, env["platform"]), library)
+
+
+def write_bindings_bits(target, source, env):
+    with open(bindings_bits_marker, "w") as f:
+        f.write(target_bits + "\n")
+
+
+env.AddPostAction(library, write_bindings_bits)
 
 default_args = [library, copy]
 Default(*default_args)
