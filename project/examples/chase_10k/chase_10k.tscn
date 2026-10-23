@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://examples/chase_10k/chase_10k.gd" id="1_chase"]
+[ext_resource type="Script" path="res://addons/horde/debug/horde_debug_overlay.gd" id="2_overlay"]
+
+[node name="Chase10k" type="Node2D"]
+script = ExtResource("1_chase")
+
+[node name="Horde2D" type="Horde2D" parent="." node_paths=PackedStringArray("target")]
+target = NodePath("../Player")
+target_radius = 14.0
+seed = 1
+
+[node name="Player" type="Node2D" parent="."]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(0.35, 0.35)
+
+[node name="DebugOverlay" type="CanvasLayer" parent="." node_paths=PackedStringArray("horde")]
+script = ExtResource("2_overlay")
+horde = NodePath("../Horde2D")
