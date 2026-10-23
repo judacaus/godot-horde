@@ -34,7 +34,8 @@ project/                   The single Godot project used for development:
   examples/chase_10k/      Minimal example: 10,000 agents chase a moving target.
   bench/                   Headless benchmark vs a CharacterBody2D baseline (CSV output).
   demo/survivors/          Playable demo (milestone 4, not started).
-tools/                     fetch_godot.sh, install_gut.sh, run_godot_tests.sh, run_bench.sh.
+tools/                     fetch_godot.sh, install_gut.sh, run_godot_tests.sh, run_bench.sh,
+                           web_smoke/ (web export + headless Chromium check).
 docs/                      PLAN.md, BENCHMARKS.md.
 .github/workflows/ci.yml   Linux CI: core tests, build, headless tests on 4.7.2 and 4.4.1.
 ```
@@ -56,7 +57,17 @@ tools/install_gut.sh 4.7.2                  # GUT version matching the Godot min
 tools/run_godot_tests.sh .tools/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
 tools/run_bench.sh .tools/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64 out.csv \
     --sizes=1000,5000,10000,20000 --layouts=spread,dense
+
+# Web (single-threaded export). Use the Emscripten version of the official templates:
+# 4.0.20 for Godot 4.6/4.7, 4.0.10 for 4.5, 3.1.64 for 4.3/4.4.
+source <emsdk>/emsdk_env.sh
+scons -j4 platform=web target=template_release threads=no
+tools/web_smoke/run.sh .tools/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64   # needs export templates
 ```
+
+Switching between 32-bit (web) and 64-bit targets in one checkout regenerates the
+godot-cpp bindings automatically (marker in `godot-cpp/gen/.horde_bindings_bits`), which
+rebuilds godot-cpp (~3–4 min on 4 cores).
 
 Useful one-offs:
 
@@ -110,6 +121,9 @@ Useful one-offs:
   `project/` next to `addons/horde`, instead of top-level `demo/` and `bench/` folders:
   a Godot scene must live inside a project, and one project avoids duplicating the
   add-on binaries. Benchmark CSVs go to `project/bench/results/` (has `.gdignore`).
+- **Web:** works with the "Extensions Support" export option and a `threads=no` build;
+  no COOP/COEP headers needed for single-threaded exports, but a secure context is.
+  Evidence and limitations: docs/PLAN.md, "Web export spike".
 - **GUT is fetched, not vendored**, because each GUT release targets one Godot minor
   version (9.4.0 → 4.3/4.4, 9.7.1 → 4.7).
 
