@@ -1,0 +1,62 @@
+# Godot auto generated files
+*.gen.*
+.godot/
+
+# Build outputs
+/bin/
+/build/
+project/addons/horde/bin/**
+!project/addons/horde/bin/.gitkeep
+
+# Test framework fetched by tools/install_gut.sh (not vendored)
+project/addons/gut/
+
+# Benchmark scratch output (curated results live in docs/BENCHMARKS.md and project/bench/results/)
+project/bench/results/*.tmp.csv
+
+# Ignore scons database
+.sconsign*.dblite
+
+# Ignore custom.py
+custom.py
+
+# Ignore generated compile_commands.json
+compile_commands.json
+
+# Ignore files generated for documentation
+/src/gen
+
+# Binaries
+*.o
+*.os
+*.so
+*.obj
+*.bc
+*.pyc
+*.dblite
+*.pdb
+*.lib
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes
+*.idb
+*.exp
+*.wasm
+*.dll
+*.dylib
+
+# Local tool downloads (Godot binaries, emsdk, ...)
+/.tools/
+
+# Other stuff
+*.log
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Jetbrains
+.idea/
