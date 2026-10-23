@@ -22,6 +22,8 @@ extends Node
 ##              (Performance.TIME_PHYSICS_PROCESS is not usable here: it reports the
 ##              maximum over the last second, refreshed once per second.)
 ##   frame_ms   Wall time between consecutive frames (whole engine iteration).
+##   sim_ms / render_ms  Horde2D only: split of step() reported by get_debug_stats()
+##              (simulation vs. writing and uploading the MultiMesh buffers).
 ## --fixed-fps 60 makes every frame advance exactly 1/60 s with one physics tick.
 
 const DT := 1.0 / 60.0
@@ -48,6 +50,8 @@ var _measure_start_usec := 0
 var _last_frame_usec := 0
 var _update_samples := PackedFloat64Array()
 var _frame_samples := PackedFloat64Array()
+var _sim_samples := PackedFloat64Array()
+var _render_samples := PackedFloat64Array()
 var _time := 0.0
 var _agent_texture: Texture2D
 var _agent_shape: CircleShape2D
@@ -119,6 +123,8 @@ func _next_run() -> void:
 	_time = 0.0
 	_update_samples.clear()
 	_frame_samples.clear()
+	_sim_samples.clear()
+	_render_samples.clear()
 	_last_frame_usec = 0
 
 
@@ -211,6 +217,10 @@ func _process(_delta: float) -> void:
 	elif _frame > warmup_frames:
 		_update_samples.append(update_usec / 1000.0)
 		_frame_samples.append((now - _last_frame_usec) / 1000.0)
+		if _horde:
+			var stats := _horde.get_debug_stats()
+			_sim_samples.append(stats["sim_usec"] / 1000.0)
+			_render_samples.append(stats["render_usec"] / 1000.0)
 		var elapsed := (now - _measure_start_usec) / 1e6
 		var count := _update_samples.size()
 		if count >= measure_frames or (elapsed >= budget_sec and count >= 30):
@@ -223,7 +233,10 @@ func _process(_delta: float) -> void:
 func _record(run: Dictionary) -> void:
 	var update := _stats(_update_samples)
 	var frame := _stats(_frame_samples)
+	var sim: Array = _stats(_sim_samples) if _sim_samples.size() > 0 else [-1.0, -1.0, -1.0]
+	var render: Array = _stats(_render_samples) if _render_samples.size() > 0 else [-1.0, -1.0, -1.0]
 	var result := {
+		"sim_ms_mean": sim[0], "render_ms_mean": render[0],
 		"layout": run["layout"],
 		"impl": run["impl"],
 		"n": run["n"],
@@ -249,13 +262,15 @@ func _stats(samples: PackedFloat64Array) -> Array[float]:
 
 func _finish() -> void:
 	var lines := PackedStringArray()
-	lines.append("layout,impl,n,frames,update_ms_mean,update_ms_p50,update_ms_p95,frame_ms_mean,frame_ms_p50,frame_ms_p95,godot_version,cpu,threads")
+	lines.append("layout,impl,n,frames,update_ms_mean,update_ms_p50,update_ms_p95,frame_ms_mean,frame_ms_p50,frame_ms_p95,sim_ms_mean,render_ms_mean,godot_version,build,cpu,threads")
 	for r in _results:
-		lines.append("%s,%s,%d,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%s,\"%s\",%d" % [
+		lines.append("%s,%s,%d,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%s,%s,\"%s\",%d" % [
 			r["layout"], r["impl"], r["n"], r["frames"],
 			r["update_ms_mean"], r["update_ms_p50"], r["update_ms_p95"],
 			r["frame_ms_mean"], r["frame_ms_p50"], r["frame_ms_p95"],
-			Engine.get_version_info().string, OS.get_processor_name(), OS.get_processor_count()])
+			r["sim_ms_mean"], r["render_ms_mean"],
+			Engine.get_version_info().string, "debug" if OS.is_debug_build() else "release",
+			OS.get_processor_name(), OS.get_processor_count()])
 	var csv := "\n".join(lines) + "\n"
 	if out_path != "":
 		var f := FileAccess.open(out_path, FileAccess.WRITE)
