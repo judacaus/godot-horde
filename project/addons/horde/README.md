@@ -42,7 +42,8 @@ func _ready() -> void:
 	horde.target = $Player # Any Node2D; or set horde.target_position.
 	horde.spawn_ring(zombie, Vector2.ZERO, 800.0, 5000)
 	horde.agents_died.connect(_on_agents_died)
-	horde.target_contact.connect(func(ids): $Player.hurt(ids.size()))
+	# 10 damage per second per touching zombie, whatever the frame rate.
+	horde.target_contact.connect(func(ids, delta): $Player.hurt(ids.size() * 10.0 * delta))
 
 func _on_explosion(at: Vector2) -> void:
 	horde.damage_circle(at, 64.0, 25.0) # Returns the ids that were hit.
@@ -102,13 +103,13 @@ read at spawn.
 | `spawn(type, position, count = 1) -> PackedInt32Array` | Spawns agents, scattered in a small disc when `count > 1`. |
 | `spawn_ring(type, center, radius, count) -> PackedInt32Array` | Spawns agents evenly on a circle. |
 | `kill(id) -> bool` | Kills an agent. Its id becomes stale immediately. |
-| `damage(id, amount) -> bool` | Damages one agent; kills it at hp <= 0. Negative amounts heal up to `max_hp`. |
+| `damage(id, amount) -> bool` | Damages one agent; kills it at hp <= 0. Negative amounts heal up to `max_hp`; NaN is rejected. |
 | `damage_circle(center, radius, amount) -> PackedInt32Array` | Damages every agent whose body overlaps the circle; returns the ids hit (dead ones included). |
 | `query_circle(center, radius) -> PackedInt32Array` | Ids of agents whose body overlaps the circle (distance <= radius + agent radius). |
 | `is_agent_alive(id)`, `get_agent_position(id)`, `get_agent_velocity(id)`, `get_agent_hp(id)`, `get_agent_type(id)` | Per-agent queries. Stale ids return `false`, zero vectors, `0.0` or `null`. |
 | `get_agent_count()` | Living agents. |
 | `clear()` | Removes all agents without emitting `agents_died` for them. |
-| `add_obstacle(center, radius) -> int`, `clear_obstacles()`, `get_obstacle_count()` | Static circular obstacles. |
+| `add_obstacle(center, radius) -> int`, `clear_obstacles()`, `get_obstacle_count()` | Static circular obstacles. `add_obstacle` returns `-1` for a non-finite center or radius. |
 | `step(delta)` | Advances, draws and emits signals. Automatic unless `update_mode` is Manual. |
 | `get_debug_stats() -> Dictionary` | Counters and timings of the last update. |
 
@@ -134,8 +135,10 @@ read at spawn.
 
 - `agents_died(ids: PackedInt32Array, positions: PackedVector2Array)`: every agent
   that died since the last update, with its last position. The ids are already stale.
-- `target_contact(ids: PackedInt32Array)`: agents touching the target this update.
-  Agents in contact are reported every update, so add your own damage cooldown.
+- `target_contact(ids: PackedInt32Array, delta: float)`: agents touching the target
+  this update, and the time in seconds the update simulated. Agents in contact are
+  reported every update, so scale continuous damage by `delta`. Updates that simulate
+  no time (with `fixed_timestep`, frames shorter than one step) don't emit it.
 
 ### Debug overlay
 

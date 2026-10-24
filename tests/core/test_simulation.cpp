@@ -3,8 +3,10 @@
 
 #include <doctest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <vector>
 
 using namespace horde;
@@ -431,5 +433,104 @@ TEST_CASE("Random operations keep handles and dense storage consistent") {
 	check_handle_invariants(sim);
 	for (AgentId id : dead) {
 		CHECK_FALSE(sim.is_alive(id));
+	}
+}
+
+TEST_CASE("Non-finite configuration is rejected and cannot corrupt agents") {
+	Simulation sim;
+	const uint16_t t = sim.add_type(basic_type(5.0f));
+	std::vector<AgentId> ids;
+	sim.spawn_ring(t, Vec2(0.0f, 0.0f), 50.0f, 16, ids);
+	const float inf_value = std::numeric_limits<float>::infinity();
+	const float nan_value = std::numeric_limits<float>::quiet_NaN();
+
+	CHECK(sim.add_obstacle(Vec2(0.0f, 0.0f), inf_value) == Simulation::INVALID_OBSTACLE);
+	CHECK(sim.add_obstacle(Vec2(nan_value, 0.0f), 10.0f) == Simulation::INVALID_OBSTACLE);
+	CHECK(sim.add_obstacle(Vec2(0.0f, -inf_value), 10.0f) == Simulation::INVALID_OBSTACLE);
+	CHECK(sim.get_obstacles().empty());
+
+	sim.set_target_radius(4.0f);
+	sim.set_target_radius(inf_value);
+	CHECK(sim.get_target_radius() == 4.0f);
+	sim.set_target_radius(nan_value);
+	CHECK(sim.get_target_radius() == 4.0f);
+
+	sim.set_cell_size(32.0f);
+	sim.set_cell_size(inf_value);
+	CHECK(sim.get_cell_size_setting() == 32.0f);
+
+	sim.set_bounds(Rect2f{ Vec2(-100.0f, -100.0f), Vec2(200.0f, 200.0f) });
+	sim.set_bounds(Rect2f{ Vec2(nan_value, 0.0f), Vec2(inf_value, 1.0f) });
+	CHECK(sim.has_bounds());
+	CHECK(sim.get_bounds().position.x == -100.0f);
+	CHECK(sim.get_bounds().size.x == 200.0f);
+
+	for (int i = 0; i < 30; i++) {
+		sim.step(DT);
+	}
+	for (AgentId id : ids) {
+		Vec2 p;
+		REQUIRE(sim.get_position(id, p));
+		CHECK(std::isfinite(p.x));
+		CHECK(std::isfinite(p.y));
+	}
+}
+
+TEST_CASE("NaN damage is ignored; infinite damage kills") {
+	Simulation sim;
+	const uint16_t t = sim.add_type(basic_type());
+	const AgentId id = sim.spawn(t, Vec2(0.0f, 0.0f));
+	const float nan_value = std::numeric_limits<float>::quiet_NaN();
+
+	CHECK_FALSE(sim.damage(id, nan_value));
+	float hp = 0.0f;
+	REQUIRE(sim.get_hp(id, hp));
+	CHECK(hp == 10.0f);
+
+	std::vector<AgentId> hits;
+	sim.damage_circle(Vec2(0.0f, 0.0f), 50.0f, nan_value, hits);
+	CHECK(hits.empty());
+	REQUIRE(sim.get_hp(id, hp));
+	CHECK(hp == 10.0f);
+
+	CHECK(sim.damage(id, std::numeric_limits<float>::infinity()));
+	CHECK_FALSE(sim.is_alive(id));
+}
+
+TEST_CASE("query_circle with an infinite radius returns every live agent") {
+	Simulation sim;
+	const uint16_t t = sim.add_type(basic_type(4.0f));
+	std::vector<AgentId> ids;
+	sim.spawn(t, Vec2(0.0f, 0.0f), 200, ids);
+	sim.spawn_ring(t, Vec2(5000.0f, -3000.0f), 900.0f, 100, ids);
+	sim.step(DT);
+	REQUIRE(sim.kill(ids[3]));
+
+	// The searched box saturates the cell coordinates (2^31 cells per axis): this used
+	// to overflow int32 when counting cells, which UBSan reports in CI.
+	const float inf_value = std::numeric_limits<float>::infinity();
+	std::vector<AgentId> got;
+	sim.query_circle(Vec2(10.0f, 10.0f), inf_value, got);
+	CHECK(got.size() == sim.agent_count());
+	std::vector<AgentId> expected;
+	sim.query_circle_brute_force(Vec2(10.0f, 10.0f), inf_value, expected);
+	std::sort(got.begin(), got.end());
+	std::sort(expected.begin(), expected.end());
+	CHECK(got == expected);
+}
+
+TEST_CASE("A huge obstacle does not overflow the obstacle grid") {
+	Simulation sim;
+	const uint16_t t = sim.add_type(basic_type(4.0f));
+	std::vector<AgentId> ids;
+	sim.spawn(t, Vec2(0.0f, 0.0f), 20, ids);
+	// Its bounding box spans more cells than int32 can count (checked by UBSan in CI).
+	REQUIRE(sim.add_obstacle(Vec2(0.0f, 0.0f), 1e30f) == 0u);
+	sim.step(DT);
+	for (AgentId id : ids) {
+		Vec2 p;
+		REQUIRE(sim.get_position(id, p));
+		CHECK(std::isfinite(p.x));
+		CHECK(std::isfinite(p.y));
 	}
 }

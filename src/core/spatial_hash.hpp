@@ -74,7 +74,10 @@ void SpatialHash::for_each_in_box(Vec2 p_min, Vec2 p_max, F &&p_visit) const {
 	if (x1 < x0 || y1 < y0) {
 		return;
 	}
-	const uint64_t cells = (static_cast<uint64_t>(x1 - x0) + 1u) * (static_cast<uint64_t>(y1 - y0) + 1u);
+	// 64-bit difference: saturated cell coordinates (an infinite box) span 2^31 cells,
+	// which overflows int32.
+	const uint64_t cells = (static_cast<uint64_t>(static_cast<int64_t>(x1) - x0) + 1u) *
+			(static_cast<uint64_t>(static_cast<int64_t>(y1) - y0) + 1u);
 	if (cells > count) {
 		// Huge box: scanning every entry once is cheaper than walking empty cells.
 		for (uint32_t e = 0; e < count; e++) {

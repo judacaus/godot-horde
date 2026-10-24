@@ -37,7 +37,8 @@ Must have:
   `query_circle(center, radius) -> PackedInt32Array`, `get_agent_position(id)`,
   `get_agent_count()`, `clear()`.
 - Batched signals, one emission per frame: `agents_died(ids: PackedInt32Array,
-  positions: PackedVector2Array)` and `target_contact(ids: PackedInt32Array)`.
+  positions: PackedVector2Array)` and `target_contact(ids: PackedInt32Array,
+  delta: float)` (`delta`: simulated time, so contact damage is frame-rate independent).
 - Rectangular bounds and static circular obstacles.
 - Debug overlay (stats and optional grid).
 

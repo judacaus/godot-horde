@@ -116,7 +116,7 @@ private:
 	void free_render_resources();
 	void apply_canvas_settings();
 	void render();
-	void emit_events();
+	void emit_events(double p_simulated_time);
 	PackedInt32Array to_packed(const std::vector<horde::AgentId> &p_ids) const;
 
 	horde::Simulation sim_;

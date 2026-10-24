@@ -66,6 +66,9 @@ uint64_t now_usec() {
 
 Horde2D::Horde2D() {
 	sim_.set_target_radius(16.0f);
+	// Scenes don't store default-valued properties, so set_seed() may never run: seed the
+	// simulation here so the default `seed` (0) is the sequence actually used.
+	sim_.set_seed(static_cast<uint64_t>(seed_));
 }
 
 Horde2D::~Horde2D() {
@@ -117,10 +120,12 @@ bool Horde2D::kill(int p_id) {
 }
 
 bool Horde2D::damage(int p_id, float p_amount) {
+	ERR_FAIL_COND_V_MSG(std::isnan(p_amount), false, "Horde2D.damage(): the amount is NaN.");
 	return sim_.damage(p_id, p_amount);
 }
 
 PackedInt32Array Horde2D::damage_circle(const Vector2 &p_center, float p_radius, float p_amount) {
+	ERR_FAIL_COND_V_MSG(std::isnan(p_amount), PackedInt32Array(), "Horde2D.damage_circle(): the amount is NaN.");
 	scratch_ids_.clear();
 	sim_.damage_circle(to_core(p_center), p_radius, p_amount, scratch_ids_);
 	return to_packed(scratch_ids_);
@@ -172,13 +177,16 @@ void Horde2D::step(double p_delta) {
 	const uint64_t t0 = now_usec();
 	sync_types();
 	sync_target();
-	sim_.advance(static_cast<float>(p_delta));
+	const uint32_t steps = sim_.advance(static_cast<float>(p_delta));
+	// Time actually simulated by this update: whole fixed steps, or the frame delta.
+	const float fixed_dt = sim_.get_fixed_timestep();
+	const double simulated = fixed_dt > 0.0f ? static_cast<double>(steps) * fixed_dt : (steps > 0 ? p_delta : 0.0);
 	const uint64_t t1 = now_usec();
 	render();
 	const uint64_t t2 = now_usec();
 	last_sim_usec_ = t1 - t0;
 	last_render_usec_ = t2 - t1;
-	emit_events();
+	emit_events(simulated);
 	last_total_usec_ = now_usec() - t0;
 	if (debug_draw_) {
 		queue_redraw();
@@ -188,7 +196,9 @@ void Horde2D::step(double p_delta) {
 // --- Obstacles -----------------------------------------------------------------------
 
 int Horde2D::add_obstacle(const Vector2 &p_center, float p_radius) {
-	const int index = static_cast<int>(sim_.add_obstacle(to_core(p_center), p_radius));
+	const uint32_t added = sim_.add_obstacle(to_core(p_center), p_radius);
+	ERR_FAIL_COND_V_MSG(added == horde::Simulation::INVALID_OBSTACLE, -1, "Horde2D.add_obstacle(): the center and radius must be finite.");
+	const int index = static_cast<int>(added);
 	if (debug_draw_) {
 		queue_redraw();
 	}
@@ -224,6 +234,7 @@ void Horde2D::set_target_position(const Vector2 &p_position) {
 }
 
 void Horde2D::set_target_radius(float p_radius) {
+	ERR_FAIL_COND_MSG(!std::isfinite(p_radius), "Horde2D.target_radius must be finite.");
 	sim_.set_target_radius(p_radius);
 }
 
@@ -254,6 +265,7 @@ void Horde2D::set_seed(int64_t p_seed) {
 }
 
 void Horde2D::set_cell_size(float p_cell_size) {
+	ERR_FAIL_COND_MSG(!std::isfinite(p_cell_size), "Horde2D.cell_size must be finite.");
 	sim_.set_cell_size(p_cell_size);
 }
 
@@ -267,6 +279,9 @@ void Horde2D::set_bounds_enabled(bool p_enabled) {
 }
 
 void Horde2D::set_bounds(const Rect2 &p_bounds) {
+	ERR_FAIL_COND_MSG(!std::isfinite(p_bounds.position.x) || !std::isfinite(p_bounds.position.y) ||
+					!std::isfinite(p_bounds.size.x) || !std::isfinite(p_bounds.size.y),
+			"Horde2D.bounds must be finite.");
 	bounds_ = p_bounds;
 	if (bounds_enabled_) {
 		const Rect2 r = bounds_.abs();
@@ -453,9 +468,11 @@ void Horde2D::render() {
 	for (size_t t = 0; t < type_count; t++) {
 		TypeSlot &slot = types_[t];
 		const int count = scratch_counts_[t];
-		// Grow by powers of two; shrink when mostly empty so uploads stay proportional.
+		// The whole buffer is uploaded every frame, so keep it at most twice the agents:
+		// grow to the next power of two, shrink when mostly empty (hysteresis avoids
+		// reallocating on every small change).
 		if (count > slot.capacity || (slot.capacity > 4 * MIN_CAPACITY && count * 4 < slot.capacity)) {
-			slot.capacity = capacity_for(count * 2);
+			slot.capacity = capacity_for(count);
 			rs->multimesh_allocate_data(slot.multimesh, slot.capacity, RenderingServer::MULTIMESH_TRANSFORM_2D, true, true);
 			slot.buffer.resize(static_cast<int64_t>(slot.capacity) * FLOATS_PER_INSTANCE);
 		}
@@ -558,7 +575,7 @@ void Horde2D::render() {
 	agents_rect_ = has_agents ? all_agents : Rect2();
 }
 
-void Horde2D::emit_events() {
+void Horde2D::emit_events(double p_simulated_time) {
 	std::vector<horde::DeathEvent> &pending = sim_.pending_deaths();
 	last_deaths_emitted_ = 0;
 	if (!pending.empty()) {
@@ -579,10 +596,12 @@ void Horde2D::emit_events() {
 		scratch_deaths_.clear();
 		emit_signal("agents_died", ids, positions);
 	}
+	// Contacts are reported only for updates that simulated time, together with that
+	// time, so damage scaled by `delta` does not depend on the frame rate.
 	const std::vector<horde::AgentId> &contacts = sim_.contacts();
-	last_contacts_ = static_cast<uint32_t>(contacts.size());
-	if (!contacts.empty()) {
-		emit_signal("target_contact", to_packed(contacts));
+	last_contacts_ = p_simulated_time > 0.0 ? static_cast<uint32_t>(contacts.size()) : 0;
+	if (last_contacts_ > 0) {
+		emit_signal("target_contact", to_packed(contacts), p_simulated_time);
 	}
 }
 
@@ -718,7 +737,7 @@ void Horde2D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "debug_draw_grid"), "set_debug_draw_grid", "is_debug_draw_grid_enabled");
 
 	ADD_SIGNAL(MethodInfo("agents_died", PropertyInfo(Variant::PACKED_INT32_ARRAY, "ids"), PropertyInfo(Variant::PACKED_VECTOR2_ARRAY, "positions")));
-	ADD_SIGNAL(MethodInfo("target_contact", PropertyInfo(Variant::PACKED_INT32_ARRAY, "ids")));
+	ADD_SIGNAL(MethodInfo("target_contact", PropertyInfo(Variant::PACKED_INT32_ARRAY, "ids"), PropertyInfo(Variant::FLOAT, "delta")));
 
 	BIND_ENUM_CONSTANT(UPDATE_PROCESS);
 	BIND_ENUM_CONSTANT(UPDATE_PHYSICS);

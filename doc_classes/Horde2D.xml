@@ -36,7 +36,7 @@
 			<param index="0" name="center" type="Vector2" />
 			<param index="1" name="radius" type="float" />
 			<description>
-				Adds a static circular obstacle that agents cannot enter, and returns its index. Agents slide around obstacles but have no pathfinding, so a large obstacle between an agent and the target can block it.
+				Adds a static circular obstacle that agents cannot enter, and returns its index, or [code]-1[/code] (with an error) if [param center] or [param radius] is not finite. Agents slide around obstacles but have no pathfinding, so a large obstacle between an agent and the target can block it.
 			</description>
 		</method>
 		<method name="clear">
@@ -56,7 +56,7 @@
 			<param index="0" name="id" type="int" />
 			<param index="1" name="amount" type="float" />
 			<description>
-				Subtracts [param amount] hit points from the agent [param id] and kills it when its hit points reach [code]0[/code] or below. A negative [param amount] heals, up to [member HordeType.max_hp]. Returns [code]false[/code] if the id is stale or invalid.
+				Subtracts [param amount] hit points from the agent [param id] and kills it when its hit points reach [code]0[/code] or below. A negative [param amount] heals, up to [member HordeType.max_hp]. Returns [code]false[/code] if the id is stale or invalid, or if [param amount] is NaN.
 			</description>
 		</method>
 		<method name="damage_circle">
@@ -140,7 +140,7 @@
 			<param index="0" name="center" type="Vector2" />
 			<param index="1" name="radius" type="float" />
 			<description>
-				Returns the ids of the living agents whose body overlaps the circle at [param center] with [param radius] (distance between centers [code]&lt;=[/code] [param radius] + agent radius). The order is unspecified. Uses the spatial hash, so small queries are cheap even with many agents.
+				Returns the ids of the living agents whose body overlaps the circle at [param center] with [param radius] (distance between centers [code]&lt;=[/code] [param radius] + agent radius). The order is unspecified. Uses the spatial hash, so small queries are cheap even with many agents. [code]INF[/code] as [param radius] returns every living agent.
 			</description>
 		</method>
 		<method name="spawn">
@@ -227,8 +227,12 @@
 		</signal>
 		<signal name="target_contact">
 			<param index="0" name="ids" type="PackedInt32Array" />
+			<param index="1" name="delta" type="float" />
 			<description>
-				Emitted once per update with the ids of the agents touching the target (see [member target_radius]). Agents that stay in contact are reported again on every update, so apply your own cooldown if needed.
+				Emitted once per update with the ids of the agents touching the target (see [member target_radius]) and the time in seconds simulated by that update. Updates that simulate no time (with [member fixed_timestep], frames shorter than one step) do not emit it. Agents that stay in contact are reported on every update, so scale continuous damage by [param delta] to make it independent of the frame rate:
+				[codeblock]
+				horde.target_contact.connect(func(ids, delta): player.hurt(ids.size() * 10.0 * delta))
+				[/codeblock]
 			</description>
 		</signal>
 	</signals>

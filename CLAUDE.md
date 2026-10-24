@@ -118,8 +118,10 @@ Useful one-offs:
   negate Y. A canvas_item shader animates the strip from `INSTANCE_CUSTOM`
   (x: frame offset, y: fps, z: hframes). The Compatibility renderer packs instance
   color/custom data as half floats, so keep those values small.
-- **Signals are batched:** `agents_died(ids, positions)` and `target_contact(ids)` are
-  emitted at most once per update, after rendering.
+- **Signals are batched:** `agents_died(ids, positions)` and `target_contact(ids, delta)`
+  are emitted at most once per update, after rendering. `target_contact` carries the
+  simulated time and is skipped when an update simulates none (fixed timestep), so
+  contact damage scaled by `delta` does not depend on the frame rate.
 - **Single Godot project.** Tests, examples, the benchmark and (later) the demo live in
   `project/` next to `addons/horde`, instead of top-level `demo/` and `bench/` folders:
   a Godot scene must live inside a project, and one project avoids duplicating the

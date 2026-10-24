@@ -101,6 +101,9 @@ void Simulation::set_type(uint16_t p_type, const TypeParams &p_params) {
 }
 
 void Simulation::set_cell_size(float p_cell_size) {
+	if (!std::isfinite(p_cell_size)) {
+		return;
+	}
 	cell_size_setting_ = p_cell_size > 0.0f ? p_cell_size : 0.0f;
 	update_cell_size();
 }
@@ -124,6 +127,10 @@ void Simulation::update_cell_size() {
 }
 
 void Simulation::set_bounds(const Rect2f &p_bounds) {
+	if (!std::isfinite(p_bounds.position.x) || !std::isfinite(p_bounds.position.y) ||
+			!std::isfinite(p_bounds.size.x) || !std::isfinite(p_bounds.size.y)) {
+		return;
+	}
 	bounds_ = p_bounds;
 	if (bounds_.size.x < 0.0f) {
 		bounds_.position.x += bounds_.size.x;
@@ -137,6 +144,10 @@ void Simulation::set_bounds(const Rect2f &p_bounds) {
 }
 
 uint32_t Simulation::add_obstacle(Vec2 p_center, float p_radius) {
+	// An infinite obstacle would push every agent to infinity (or NaN) for good.
+	if (!std::isfinite(p_center.x) || !std::isfinite(p_center.y) || !std::isfinite(p_radius)) {
+		return INVALID_OBSTACLE;
+	}
 	obstacles_.push_back(Obstacle{ p_center, std::max(p_radius, 0.0f) });
 	obstacle_grid_valid_ = false;
 	return static_cast<uint32_t>(obstacles_.size() - 1);
@@ -164,7 +175,9 @@ void Simulation::rebuild_obstacle_grid() {
 		const int32_t x1 = cell_coord(ob.center.x + reach + pad, inv_cell);
 		const int32_t y0 = cell_coord(ob.center.y - reach - pad, inv_cell);
 		const int32_t y1 = cell_coord(ob.center.y + reach + pad, inv_cell);
-		const uint64_t cells = (static_cast<uint64_t>(x1 - x0) + 1u) * (static_cast<uint64_t>(y1 - y0) + 1u);
+		// 64-bit difference: saturated cell coordinates span up to 2^31 cells.
+		const uint64_t cells = (static_cast<uint64_t>(static_cast<int64_t>(x1) - x0) + 1u) *
+				(static_cast<uint64_t>(static_cast<int64_t>(y1) - y0) + 1u);
 		if (cells > MAX_CELLS_PER_OBSTACLE) {
 			g.large.push_back(o);
 			continue;
@@ -301,7 +314,7 @@ bool Simulation::kill(AgentId p_id) {
 }
 
 bool Simulation::damage(AgentId p_id, float p_amount) {
-	if (!handles_.is_valid(p_id)) {
+	if (std::isnan(p_amount) || !handles_.is_valid(p_id)) {
 		return false;
 	}
 	const uint32_t d = handles_.dense_index(p_id);
@@ -313,6 +326,9 @@ bool Simulation::damage(AgentId p_id, float p_amount) {
 }
 
 void Simulation::damage_circle(Vec2 p_center, float p_radius, float p_amount, std::vector<AgentId> &r_hit_ids) {
+	if (std::isnan(p_amount)) {
+		return;
+	}
 	const size_t first = r_hit_ids.size();
 	query_circle(p_center, p_radius, r_hit_ids);
 	// Kills only flag agents, so the ids gathered above stay addressable while looping.

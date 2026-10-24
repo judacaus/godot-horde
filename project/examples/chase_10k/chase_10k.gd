@@ -47,9 +47,10 @@ func _draw() -> void:
 	draw_circle(player.position, horde.target_radius, Color(0.4, 0.8, 1.0))
 
 
-func _on_target_contact(ids: PackedInt32Array) -> void:
+func _on_target_contact(ids: PackedInt32Array, delta: float) -> void:
+	# 60 hit points per second while touching the target.
 	for id in ids:
-		horde.damage(id, 1.0)
+		horde.damage(id, 60.0 * delta)
 
 
 func _on_agents_died(ids: PackedInt32Array, _positions: PackedVector2Array) -> void:

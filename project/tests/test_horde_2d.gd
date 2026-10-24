@@ -193,10 +193,51 @@ func test_target_contact_is_emitted_once_per_update() -> void:
 	assert_signal_emitted(horde, "target_contact")
 	var count: int = get_signal_emit_count(horde, "target_contact")
 	assert_lte(count, 120, "at most one emission per update")
-	var ids: PackedInt32Array = get_signal_parameters(horde, "target_contact")[0]
+	var params: Array = get_signal_parameters(horde, "target_contact")
+	var ids: PackedInt32Array = params[0]
 	assert_gt(ids.size(), 0)
 	for id in ids:
 		assert_lt(horde.get_agent_position(id).length(), 20.0 + 6.0 + 1.5)
+	assert_almost_eq(params[1], DT, 0.000001, "delta is the time simulated by the update")
+
+
+func test_target_contact_reports_simulated_time_and_skips_idle_updates() -> void:
+	var horde := _make_horde()
+	horde.target_position = Vector2.ZERO
+	horde.target_radius = 20.0
+	horde.fixed_timestep = 1.0 / 30.0
+	horde.spawn(_make_type(6.0), Vector2(22, 0))
+	watch_signals(horde)
+	# A quarter of a fixed step: nothing is simulated, so no contact is reported even
+	# though the agent already overlaps the target.
+	horde.step(1.0 / 120.0)
+	assert_signal_not_emitted(horde, "target_contact")
+	# 1/120 + 1/10 s accumulated: three whole steps run in this update.
+	horde.step(1.0 / 10.0)
+	assert_signal_emit_count(horde, "target_contact", 1)
+	var params: Array = get_signal_parameters(horde, "target_contact")
+	assert_eq((params[0] as PackedInt32Array).size(), 1)
+	assert_almost_eq(params[1], 3.0 / 30.0, 0.0001, "delta covers every step of the update")
+
+
+func test_default_seed_is_the_same_as_an_explicit_zero_seed() -> void:
+	var t := _make_type()
+	var implicit := Horde2D.new()
+	implicit.update_mode = Horde2D.UPDATE_MANUAL
+	add_child_autofree(implicit)
+	var explicit := Horde2D.new()
+	explicit.update_mode = Horde2D.UPDATE_MANUAL
+	explicit.seed = 0
+	add_child_autofree(explicit)
+	assert_eq(implicit.seed, 0)
+	var a := implicit.spawn(t, Vector2.ZERO, 50)
+	var b := explicit.spawn(t, Vector2.ZERO, 50)
+	var positions_a := PackedVector2Array()
+	var positions_b := PackedVector2Array()
+	for k in a.size():
+		positions_a.append(implicit.get_agent_position(a[k]))
+		positions_b.append(explicit.get_agent_position(b[k]))
+	assert_eq(positions_a, positions_b, "the default seed is really 0")
 
 
 func test_bounds_and_obstacles_constrain_agents() -> void:

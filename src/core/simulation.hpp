@@ -56,6 +56,7 @@ struct StepStats {
 class Simulation {
 public:
 	static constexpr uint16_t MAX_TYPES = 65535;
+	static constexpr uint32_t INVALID_OBSTACLE = 0xFFFFFFFFu;
 
 	Simulation();
 
@@ -74,7 +75,12 @@ public:
 	void set_target_enabled(bool p_enabled) { target_enabled_ = p_enabled; }
 	bool is_target_enabled() const { return target_enabled_; }
 	// Agents within target_radius + agent radius + contact_margin are reported as contacts.
-	void set_target_radius(float p_radius) { target_radius_ = p_radius > 0.0f ? p_radius : 0.0f; }
+	// Non-finite values are ignored: an infinite solid target would push agents to infinity.
+	void set_target_radius(float p_radius) {
+		if (std::isfinite(p_radius)) {
+			target_radius_ = p_radius > 0.0f ? p_radius : 0.0f;
+		}
+	}
 	float get_target_radius() const { return target_radius_; }
 	// A solid target pushes agents out like an obstacle of radius target_radius.
 	void set_target_solid(bool p_solid) { target_solid_ = p_solid; }
@@ -88,17 +94,18 @@ public:
 	void set_overlap_resolution(float p_fraction) { overlap_resolution_ = std::min(std::max(p_fraction, 0.0f), 1.0f); }
 	float get_overlap_resolution() const { return overlap_resolution_; }
 
-	// 0 means automatic: twice the largest agent radius.
+	// 0 means automatic: twice the largest agent radius. Non-finite values are ignored.
 	void set_cell_size(float p_cell_size);
 	float get_cell_size_setting() const { return cell_size_setting_; }
 	float get_effective_cell_size() const { return cell_size_; }
 
+	// Enables the bounds. Rectangles with non-finite values are ignored.
 	void set_bounds(const Rect2f &p_bounds);
 	void disable_bounds() { bounds_enabled_ = false; }
 	bool has_bounds() const { return bounds_enabled_; }
 	Rect2f get_bounds() const { return bounds_; }
 
-	// Returns the obstacle index.
+	// Returns the obstacle index, or INVALID_OBSTACLE if the center or radius is not finite.
 	uint32_t add_obstacle(Vec2 p_center, float p_radius);
 	void clear_obstacles();
 	const std::vector<Obstacle> &get_obstacles() const { return obstacles_; }
@@ -129,12 +136,14 @@ public:
 	// Kills an agent. Returns false for stale or invalid ids. The death is queued in
 	// pending_deaths(); the id is stale immediately.
 	bool kill(AgentId p_id);
-	// Subtracts hp from a single agent; kills it at hp <= 0. Returns false if stale.
+	// Subtracts hp from a single agent; kills it at hp <= 0. Returns false if stale or
+	// if the amount is NaN (which would leave the agent with NaN hp, impossible to kill).
 	bool damage(AgentId p_id, float p_amount);
 	// Damages every agent overlapping the circle; appends hit ids (killed ones too).
+	// A NaN amount damages and appends nothing.
 	void damage_circle(Vec2 p_center, float p_radius, float p_amount, std::vector<AgentId> &r_hit_ids);
 	// Appends every live agent whose body overlaps the circle. Order is unspecified
-	// but deterministic.
+	// but deterministic. An infinite radius returns every live agent.
 	void query_circle(Vec2 p_center, float p_radius, std::vector<AgentId> &r_ids);
 	// Reference implementation of query_circle used by tests: linear scan.
 	void query_circle_brute_force(Vec2 p_center, float p_radius, std::vector<AgentId> &r_ids) const;
