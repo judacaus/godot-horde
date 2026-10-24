@@ -8,7 +8,8 @@ node-based API. Work in progress; see [docs/PLAN.md](docs/PLAN.md).
 - GDScript API: `Horde2D` node and `HordeType` resource, batched signals.
 - Godot 4.4+ (tested on 4.4.1 and 4.7.2).
 
-Usage: [project/addons/horde/README.md](project/addons/horde/README.md).
+Usage: [project/addons/horde/README.md](project/addons/horde/README.md). The class
+reference is also built into the editor help (F1, search `Horde2D`).
 Performance: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 Contributing and build commands: [CLAUDE.md](CLAUDE.md).
 

@@ -59,7 +59,9 @@ Beyond the brief, most of the v0.1 API already exists because it is thin on top 
 core: every method and signal listed above, bounds, obstacles, solid target with
 contacts, fixed timestep with render interpolation, deterministic seed, update modes
 (process / physics / manual), in-world debug drawing and `HordeDebugOverlay`
-(screen-space stats). What is missing for v0.1 is tracked in milestone 3.
+(screen-space stats). User documentation: class reference in `doc_classes/` (editor
+help) and the add-on README (installation, reference tables, web export,
+limitations, troubleshooting). What is missing for v0.1 is tracked in milestone 3.
 
 ### Milestone 3 proposal: hardening and platforms
 
@@ -72,8 +74,7 @@ contacts, fixed timestep with render interpolation, deterministic seed, update m
    exports, tested with the headers.
 3. **Rendering benchmark on real GPUs** (Forward+ and Compatibility), with a release
    export of the benchmark; headless numbers here exclude GPU cost.
-4. **API polish found while building milestone 2**: class reference XML in
-   `doc_classes/` (shown in the editor help), editor icons, interpolation in
+4. **API polish found while building milestone 2**: editor icons, interpolation in
    `UPDATE_PHYSICS` mode using `Engine.get_physics_interpolation_fraction()`, per-type
    draw order, hit-flash via the free `INSTANCE_CUSTOM.w` channel, a contact
    cooldown option, `damage_circle` returning only killed ids as an option.
