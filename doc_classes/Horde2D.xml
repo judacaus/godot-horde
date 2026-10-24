@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Horde2D" inherits="Node2D" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Simulates and draws thousands of lightweight 2D agents that chase a target.
+	</brief_description>
+	<description>
+		[Horde2D] runs a crowd simulation in C++ and draws all its agents with one [MultiMesh] per [HordeType]. Agents seek a target ([member target] or [member target_position]), keep apart from each other, collide with static circular obstacles and stay inside optional rectangular [member bounds]. They have hit points and can be queried and damaged by area.
+		Agents are not nodes. Each one is identified by an integer id returned by [method spawn] and [method spawn_ring]. Ids stay valid until the agent dies; after that they are stale forever and never refer to a newer agent, so methods taking an id return [code]false[/code] or a zero value for them.
+		All positions are in this node's local coordinates. Keep the node at the origin with no rotation or scale if you want them to match global coordinates.
+		The simulation advances once per frame in [constant UPDATE_PROCESS] mode (default), once per physics tick in [constant UPDATE_PHYSICS] mode, or only when you call [method step] in [constant UPDATE_MANUAL] mode. Each update simulates, uploads the instance data, then emits [signal agents_died] and [signal target_contact] at most once each.
+		By default agents are drawn with a built-in shader that animates the [HordeType] sprite strip. Assign a [member CanvasItem.material] to this node to replace it: the shader receives [code]INSTANCE_CUSTOM.x[/code] (frame offset), [code].y[/code] (frames per second) and [code].z[/code] (frame count), and the type's [member HordeType.modulate] as the instance color.
+		[codeblock]
+		@onready var horde: Horde2D = $Horde2D
+
+		func _ready():
+			var bat := HordeType.new()
+			bat.radius = 5.0
+			horde.target = $Player
+			horde.spawn_ring(bat, Vector2.ZERO, 600.0, 2000)
+			horde.agents_died.connect(_on_agents_died)
+			horde.target_contact.connect(func(ids): $Player.hurt(ids.size()))
+
+		func _on_explosion(at: Vector2):
+			horde.damage_circle(at, 64.0, 25.0)
+
+		func _on_agents_died(ids: PackedInt32Array, positions: PackedVector2Array):
+			for p in positions:
+				spawn_gem(p)
+		[/codeblock]
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_obstacle">
+			<return type="int" />
+			<param index="0" name="center" type="Vector2" />
+			<param index="1" name="radius" type="float" />
+			<description>
+				Adds a static circular obstacle that agents cannot enter, and returns its index. Agents slide around obstacles but have no pathfinding, so a large obstacle between an agent and the target can block it.
+			</description>
+		</method>
+		<method name="clear">
+			<return type="void" />
+			<description>
+				Removes every agent immediately. Their ids become stale and no [signal agents_died] is emitted for them; deaths that happened before the call are still reported on the next update.
+			</description>
+		</method>
+		<method name="clear_obstacles">
+			<return type="void" />
+			<description>
+				Removes all obstacles added with [method add_obstacle].
+			</description>
+		</method>
+		<method name="damage">
+			<return type="bool" />
+			<param index="0" name="id" type="int" />
+			<param index="1" name="amount" type="float" />
+			<description>
+				Subtracts [param amount] hit points from the agent [param id] and kills it when its hit points reach [code]0[/code] or below. A negative [param amount] heals, up to [member HordeType.max_hp]. Returns [code]false[/code] if the id is stale or invalid.
+			</description>
+		</method>
+		<method name="damage_circle">
+			<return type="PackedInt32Array" />
+			<param index="0" name="center" type="Vector2" />
+			<param index="1" name="radius" type="float" />
+			<param index="2" name="amount" type="float" />
+			<description>
+				Damages every living agent whose body overlaps the circle at [param center] with [param radius] (distance between centers [code]&lt;=[/code] [param radius] + agent radius) and returns their ids, including the ones that died. Killed agents are reported by [signal agents_died] on the next update.
+			</description>
+		</method>
+		<method name="get_agent_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of living agents.
+			</description>
+		</method>
+		<method name="get_agent_hp" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="id" type="int" />
+			<description>
+				Returns the current hit points of the agent [param id], or [code]0.0[/code] if the id is stale or invalid.
+			</description>
+		</method>
+		<method name="get_agent_position" qualifiers="const">
+			<return type="Vector2" />
+			<param index="0" name="id" type="int" />
+			<description>
+				Returns the position of the agent [param id] in local coordinates, or [code]Vector2(0, 0)[/code] if the id is stale or invalid (use [method is_agent_alive] to tell them apart).
+			</description>
+		</method>
+		<method name="get_agent_type" qualifiers="const">
+			<return type="HordeType" />
+			<param index="0" name="id" type="int" />
+			<description>
+				Returns the [HordeType] of the agent [param id], or [code]null[/code] if the id is stale or invalid.
+			</description>
+		</method>
+		<method name="get_agent_velocity" qualifiers="const">
+			<return type="Vector2" />
+			<param index="0" name="id" type="int" />
+			<description>
+				Returns the velocity of the agent [param id] in pixels per second, or [code]Vector2(0, 0)[/code] if the id is stale or invalid.
+			</description>
+		</method>
+		<method name="get_debug_stats" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns counters and timings of the last update, also shown by [code]HordeDebugOverlay[/code]:
+				- [code]agents[/code], [code]types[/code], [code]obstacles[/code]: current counts.
+				- [code]cell_size[/code]: spatial hash cell size in use, in pixels.
+				- [code]substeps[/code]: simulation steps run by the last update (see [member fixed_timestep]).
+				- [code]neighbor_checks[/code]: agent pairs tested in the last step.
+				- [code]hash_rebuilds[/code]: spatial hash rebuilds since the node was created.
+				- [code]sim_usec[/code], [code]render_usec[/code], [code]update_usec[/code]: microseconds spent simulating, writing the [MultiMesh] buffers, and in the whole update.
+				- [code]deaths_emitted[/code], [code]contacts[/code]: sizes of the last [signal agents_died] and [signal target_contact] batches.
+			</description>
+		</method>
+		<method name="get_obstacle_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of obstacles.
+			</description>
+		</method>
+		<method name="is_agent_alive" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="id" type="int" />
+			<description>
+				Returns [code]true[/code] if [param id] refers to a living agent.
+			</description>
+		</method>
+		<method name="kill">
+			<return type="bool" />
+			<param index="0" name="id" type="int" />
+			<description>
+				Kills the agent [param id]. Its id is stale immediately and the death is reported by [signal agents_died] on the next update. Returns [code]false[/code] if the id is stale or invalid.
+			</description>
+		</method>
+		<method name="query_circle">
+			<return type="PackedInt32Array" />
+			<param index="0" name="center" type="Vector2" />
+			<param index="1" name="radius" type="float" />
+			<description>
+				Returns the ids of the living agents whose body overlaps the circle at [param center] with [param radius] (distance between centers [code]&lt;=[/code] [param radius] + agent radius). The order is unspecified. Uses the spatial hash, so small queries are cheap even with many agents.
+			</description>
+		</method>
+		<method name="spawn">
+			<return type="PackedInt32Array" />
+			<param index="0" name="type" type="HordeType" />
+			<param index="1" name="position" type="Vector2" />
+			<param index="2" name="count" type="int" default="1" />
+			<description>
+				Spawns [param count] agents of [param type] at [param position] and returns their ids. When [param count] is greater than 1 they are scattered in a disc around [param position] large enough to avoid heavy overlap. Returns fewer ids if the agent limit (1,048,576) is reached or the position is not finite.
+			</description>
+		</method>
+		<method name="spawn_ring">
+			<return type="PackedInt32Array" />
+			<param index="0" name="type" type="HordeType" />
+			<param index="1" name="center" type="Vector2" />
+			<param index="2" name="radius" type="float" />
+			<param index="3" name="count" type="int" />
+			<description>
+				Spawns [param count] agents of [param type] evenly spaced on a circle of [param radius] around [param center], starting at a random angle, and returns their ids.
+			</description>
+		</method>
+		<method name="step">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				Advances the simulation by [param delta] seconds (in whole steps of [member fixed_timestep] if it is set), redraws the agents and emits the update's signals. Called automatically unless [member update_mode] is [constant UPDATE_MANUAL].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="bounds" type="Rect2" setter="set_bounds" getter="get_bounds" default="Rect2(-512, -512, 1024, 1024)">
+			Rectangle, in local coordinates, that agents cannot leave when [member bounds_enabled] is [code]true[/code]. Agents stay inside it by at least their radius.
+		</member>
+		<member name="bounds_enabled" type="bool" setter="set_bounds_enabled" getter="is_bounds_enabled" default="false">
+			If [code]true[/code], agents are kept inside [member bounds].
+		</member>
+		<member name="cell_size" type="float" setter="set_cell_size" getter="get_cell_size" default="0.0">
+			Size of the spatial hash cells in pixels. [code]0[/code] (default) uses twice the largest [member HordeType.radius], which suits most hordes. Values that would need searching more than 4 cells away are raised automatically.
+		</member>
+		<member name="debug_draw" type="bool" setter="set_debug_draw" getter="is_debug_draw_enabled" default="false">
+			If [code]true[/code], draws the bounds, obstacles, target radius and (with [member debug_draw_grid]) the spatial hash grid around the agents. Meant for debugging.
+		</member>
+		<member name="debug_draw_grid" type="bool" setter="set_debug_draw_grid" getter="is_debug_draw_grid_enabled" default="true">
+			If [code]true[/code] and [member debug_draw] is enabled, also draws the spatial hash grid. Large grids are skipped.
+		</member>
+		<member name="fixed_timestep" type="float" setter="set_fixed_timestep" getter="get_fixed_timestep" default="0.0">
+			If greater than [code]0[/code], each update runs as many whole simulation steps of this many seconds as the elapsed time allows (up to [member max_substeps]), which makes results independent of the frame rate and reproducible with the same [member seed] and inputs. [code]0[/code] (default) runs exactly one step per update using the frame's delta.
+		</member>
+		<member name="interpolate" type="bool" setter="set_interpolate" getter="is_interpolating" default="true">
+			If [code]true[/code] and [member fixed_timestep] is set, agents are drawn between their previous and current simulated positions so movement stays smooth when the frame rate and the timestep differ.
+		</member>
+		<member name="max_substeps" type="int" setter="set_max_substeps" getter="get_max_substeps" default="8">
+			Maximum number of [member fixed_timestep] steps per update. If the game falls further behind, the extra time is dropped instead of making the next frames even slower.
+		</member>
+		<member name="overlap_resolution" type="float" setter="set_overlap_resolution" getter="get_overlap_resolution" default="0.8">
+			Fraction of the overlap between two agents that is removed at each step by pushing them apart, from [code]0[/code] to [code]1[/code]. Of each pair, the agent farther from the target moves more, so a crowd stays packed around the target instead of collapsing onto it. [code]0[/code] leaves only the softer separation steering.
+		</member>
+		<member name="seed" type="int" setter="set_seed" getter="get_seed" default="0">
+			Seed of the random numbers used when spawning (scatter positions, ring start angle, animation frame offsets). Setting it restarts the sequence. Together with [member fixed_timestep] or [constant UPDATE_MANUAL] with constant deltas, the same seed and the same calls in the same order give identical results on the same build.
+		</member>
+		<member name="target" type="Node2D" setter="set_target" getter="get_target">
+			The node agents chase, read every update. Its global position is converted to this node's local coordinates. If [code]null[/code] or outside the scene tree, [member target_position] is used instead.
+		</member>
+		<member name="target_position" type="Vector2" setter="set_target_position" getter="get_target_position" default="Vector2(0, 0)">
+			Position agents chase, in local coordinates, when [member target] is not set.
+		</member>
+		<member name="target_radius" type="float" setter="set_target_radius" getter="get_target_radius" default="16.0">
+			Radius of the target in pixels. Agents within [code]target_radius + agent radius + 1[/code] pixels are reported by [signal target_contact], and with [member target_solid] they cannot get closer than [code]target_radius + agent radius[/code]. [code]0[/code] disables both.
+		</member>
+		<member name="target_solid" type="bool" setter="set_target_solid" getter="is_target_solid" default="true">
+			If [code]true[/code], agents cannot enter the target's circle (see [member target_radius]) and press around it instead.
+		</member>
+		<member name="update_mode" type="int" setter="set_update_mode" getter="get_update_mode" enum="Horde2D.UpdateMode" default="0">
+			When the simulation advances. See [enum UpdateMode].
+		</member>
+	</members>
+	<signals>
+		<signal name="agents_died">
+			<param index="0" name="ids" type="PackedInt32Array" />
+			<param index="1" name="positions" type="PackedVector2Array" />
+			<description>
+				Emitted once per update with every agent that died since the previous emission ([method kill], [method damage], [method damage_circle]), with their last positions in local coordinates. Their ids are already stale. Not emitted for agents removed by [method clear].
+			</description>
+		</signal>
+		<signal name="target_contact">
+			<param index="0" name="ids" type="PackedInt32Array" />
+			<description>
+				Emitted once per update with the ids of the agents touching the target (see [member target_radius]). Agents that stay in contact are reported again on every update, so apply your own cooldown if needed.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="UPDATE_PROCESS" value="0" enum="UpdateMode">
+			The simulation advances once per rendered frame, in [method Node._process].
+		</constant>
+		<constant name="UPDATE_PHYSICS" value="1" enum="UpdateMode">
+			The simulation advances once per physics tick, in [method Node._physics_process]. Agents are drawn at physics rate, without interpolation.
+		</constant>
+		<constant name="UPDATE_MANUAL" value="2" enum="UpdateMode">
+			The simulation only advances when [method step] is called.
+		</constant>
+	</constants>
+</class>
