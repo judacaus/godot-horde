@@ -18,7 +18,7 @@
 			horde.target = $Player
 			horde.spawn_ring(bat, Vector2.ZERO, 600.0, 2000)
 			horde.agents_died.connect(_on_agents_died)
-			horde.target_contact.connect(func(ids): $Player.hurt(ids.size()))
+			horde.target_contact.connect(func(ids, delta): $Player.hurt(ids.size() * 10.0 * delta))
 
 		func _on_explosion(at: Vector2):
 			horde.damage_circle(at, 64.0, 25.0)

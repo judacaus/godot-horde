@@ -11,7 +11,7 @@ here. Nothing is estimated. Raw CSVs live in [`project/bench/results/`](../proje
 | Machine | Cloud VM (Firecracker kernel `6.18.44-fc-v153`, Docker container), 15 GiB RAM, **no GPU** |
 | OS / compiler | Ubuntu 24.04.5 LTS, GCC 13.3.0, SCons 4.11.1 |
 | Godot | 4.7.2-stable official (`ed1daf0bf`), headless (`--headless`: dummy renderer) |
-| godot-horde | commit of this PR, godot-cpp 10.0.0-stable, `api_version=4.4` |
+| godot-horde | commit `a441f93` (before `83cc690`, which shrank the MultiMesh buffers; not re-measured since), godot-cpp 10.0.0-stable, `api_version=4.4` |
 
 The machine is shared, so expect noise: see "Run-to-run variation" below.
 
