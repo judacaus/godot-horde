@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HordeType" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Shared settings for one kind of [Horde2D] agent: look, body and movement.
+	</brief_description>
+	<description>
+		A [HordeType] describes a kind of agent (an enemy type, a critter...). Pass it to [method Horde2D.spawn] or [method Horde2D.spawn_ring]; every agent spawned with it shares these settings. The same resource can be used by several [Horde2D] nodes.
+		Changes to the movement and body properties apply to living agents on the next update. [member max_hp] is only read when an agent spawns (and as the cap when healing with a negative [method Horde2D.damage]).
+		Agents are drawn with [member texture] at its native size: [member radius] only sets the body used for separation, obstacles, queries and contacts, so pick a radius that matches the visible sprite.
+		[codeblock]
+		var zombie := HordeType.new()
+		zombie.texture = preload("res://zombie_walk.png") # 4 frames side by side.
+		zombie.hframes = 4
+		zombie.fps = 8.0
+		zombie.radius = 6.0
+		zombie.max_speed = 90.0
+		$Horde2D.spawn(zombie, Vector2(400, 0), 50)
+		[/codeblock]
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_frame_size" qualifiers="const">
+			<return type="Vector2" />
+			<description>
+				Returns the size in pixels of one animation frame: the [member texture] width divided by [member hframes], and its height. Without a texture, returns the body diameter ([code]2 * radius[/code], at least 1).
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="acceleration" type="float" setter="set_acceleration" getter="get_acceleration" default="600.0">
+			Maximum change of velocity per second, in pixels per second squared. High values make agents turn and stop almost instantly; low values make them drift.
+		</member>
+		<member name="fps" type="float" setter="set_fps" getter="get_fps" default="8.0">
+			Animation speed in frames per second. Every agent starts at a random frame, so a horde does not animate in lockstep. With [code]0[/code], each agent keeps showing the frame it was given at spawn.
+		</member>
+		<member name="hframes" type="int" setter="set_hframes" getter="get_hframes" default="1">
+			Number of animation frames laid out side by side in [member texture]. Only horizontal strips are supported.
+		</member>
+		<member name="max_hp" type="float" setter="set_max_hp" getter="get_max_hp" default="10.0">
+			Hit points an agent has when it spawns. An agent dies when [method Horde2D.damage] or [method Horde2D.damage_circle] brings it to [code]0[/code] or below.
+		</member>
+		<member name="max_speed" type="float" setter="set_max_speed" getter="get_max_speed" default="80.0">
+			Maximum speed in pixels per second.
+		</member>
+		<member name="modulate" type="Color" setter="set_modulate" getter="get_modulate" default="Color(1, 1, 1, 1)">
+			Color multiplied with the texture of every agent of this type. Without a texture, it is the color of the square drawn for each agent.
+		</member>
+		<member name="radius" type="float" setter="set_radius" getter="get_radius" default="8.0">
+			Radius of the agent's body in pixels. Used for separation from other agents, obstacles, bounds, [method Horde2D.query_circle], [method Horde2D.damage_circle] and target contacts. It does not scale the sprite.
+		</member>
+		<member name="seek_weight" type="float" setter="set_seek_weight" getter="get_seek_weight" default="1.0">
+			How strongly agents move towards the [Horde2D] target. [code]0[/code] disables seeking; negative values make agents flee.
+		</member>
+		<member name="separation_weight" type="float" setter="set_separation_weight" getter="get_separation_weight" default="1.5">
+			How strongly agents steer away from overlapping neighbours. [code]0[/code] makes this type ignore other agents (they still avoid it). The positional push controlled by [member Horde2D.overlap_resolution] also only applies to types with a non-zero weight.
+		</member>
+		<member name="texture" type="Texture2D" setter="set_texture" getter="get_texture">
+			Sprite strip used to draw the agents, with [member hframes] frames side by side. If [code]null[/code], agents are drawn as squares of the body diameter tinted with [member modulate].
+		</member>
+	</members>
+</class>

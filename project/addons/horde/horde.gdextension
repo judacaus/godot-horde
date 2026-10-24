@@ -1,0 +1,54 @@
+[configuration]
+
+entry_symbol = "horde_library_init"
+compatibility_minimum = "4.4"
+reloadable = false
+
+[libraries]
+; Paths are relative to this file, so the add-on can live anywhere in a project.
+
+linux.x86_64.single.debug = "./bin/linux/libhorde.linux.template_debug.x86_64.so"
+linux.x86_64.single.release = "./bin/linux/libhorde.linux.template_release.x86_64.so"
+linux.x86_64.double.debug = "./bin/linux/libhorde.linux.template_debug.double.x86_64.so"
+linux.x86_64.double.release = "./bin/linux/libhorde.linux.template_release.double.x86_64.so"
+
+linux.arm64.single.debug = "./bin/linux/libhorde.linux.template_debug.arm64.so"
+linux.arm64.single.release = "./bin/linux/libhorde.linux.template_release.arm64.so"
+linux.arm64.double.debug = "./bin/linux/libhorde.linux.template_debug.double.arm64.so"
+linux.arm64.double.release = "./bin/linux/libhorde.linux.template_release.double.arm64.so"
+
+windows.x86_64.single.debug = "./bin/windows/horde.windows.template_debug.x86_64.dll"
+windows.x86_64.single.release = "./bin/windows/horde.windows.template_release.x86_64.dll"
+windows.x86_64.double.debug = "./bin/windows/horde.windows.template_debug.double.x86_64.dll"
+windows.x86_64.double.release = "./bin/windows/horde.windows.template_release.double.x86_64.dll"
+
+windows.arm64.single.debug = "./bin/windows/horde.windows.template_debug.arm64.dll"
+windows.arm64.single.release = "./bin/windows/horde.windows.template_release.arm64.dll"
+windows.arm64.double.debug = "./bin/windows/horde.windows.template_debug.double.arm64.dll"
+windows.arm64.double.release = "./bin/windows/horde.windows.template_release.double.arm64.dll"
+
+macos.single.debug = "./bin/macos/libhorde.macos.template_debug.dylib"
+macos.single.release = "./bin/macos/libhorde.macos.template_release.dylib"
+macos.double.debug = "./bin/macos/libhorde.macos.template_debug.double.dylib"
+macos.double.release = "./bin/macos/libhorde.macos.template_release.double.dylib"
+
+android.arm64.single.debug = "./bin/android/libhorde.android.template_debug.arm64.so"
+android.arm64.single.release = "./bin/android/libhorde.android.template_release.arm64.so"
+android.arm64.double.debug = "./bin/android/libhorde.android.template_debug.double.arm64.so"
+android.arm64.double.release = "./bin/android/libhorde.android.template_release.double.arm64.so"
+
+android.x86_64.single.debug = "./bin/android/libhorde.android.template_debug.x86_64.so"
+android.x86_64.single.release = "./bin/android/libhorde.android.template_release.x86_64.so"
+android.x86_64.double.debug = "./bin/android/libhorde.android.template_debug.double.x86_64.so"
+android.x86_64.double.release = "./bin/android/libhorde.android.template_release.double.x86_64.so"
+
+; Web: "nothreads" (the default export) and "threads" exports need different builds
+; (scons platform=web threads=no / threads=yes). Requires the Extensions Support export option.
+web.wasm32.nothreads.single.debug = "./bin/web/libhorde.web.template_debug.wasm32.nothreads.wasm"
+web.wasm32.nothreads.single.release = "./bin/web/libhorde.web.template_release.wasm32.nothreads.wasm"
+web.wasm32.nothreads.double.debug = "./bin/web/libhorde.web.template_debug.double.wasm32.nothreads.wasm"
+web.wasm32.nothreads.double.release = "./bin/web/libhorde.web.template_release.double.wasm32.nothreads.wasm"
+web.wasm32.threads.single.debug = "./bin/web/libhorde.web.template_debug.wasm32.wasm"
+web.wasm32.threads.single.release = "./bin/web/libhorde.web.template_release.wasm32.wasm"
+web.wasm32.threads.double.debug = "./bin/web/libhorde.web.template_debug.double.wasm32.wasm"
+web.wasm32.threads.double.release = "./bin/web/libhorde.web.template_release.double.wasm32.wasm"

@@ -1,0 +1,26 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="godot-horde dev project"
+config/description="Development, test and benchmark project for the godot-horde GDExtension."
+config/features=PackedStringArray("4.4")
+run/main_scene="res://examples/chase_10k/chase_10k.tscn"
+run/main_scene.horde_bench="res://bench/bench.tscn"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720

@@ -1,0 +1,17 @@
+layout,impl,n,frames,update_ms_mean,update_ms_p50,update_ms_p95,frame_ms_mean,frame_ms_p50,frame_ms_p95,sim_ms_mean,render_ms_mean,godot_version,build,cpu,threads
+spread,horde,1000,300,0.2219,0.2180,0.2970,0.2327,0.2300,0.3110,0.2064,0.0146,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+spread,horde,5000,300,1.0877,0.9850,1.5020,1.1265,1.0150,1.5600,0.9497,0.1326,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+spread,horde,10000,300,1.9748,1.9700,2.2140,2.0179,2.0130,2.2650,1.6985,0.2702,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+spread,horde,20000,300,4.1917,3.8770,5.7280,4.2393,3.9240,5.7780,3.6007,0.5834,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+spread,gdscript,1000,300,10.1573,8.2990,20.6690,10.1976,8.3300,20.7090,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+spread,gdscript,5000,300,39.0970,38.4350,52.2690,39.1757,38.5200,52.3410,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+spread,gdscript,10000,300,71.7767,66.6440,105.1270,71.8609,66.7460,105.2190,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+spread,gdscript,20000,177,169.7788,166.5730,193.2150,169.8707,166.6520,193.3010,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,horde,1000,300,0.3181,0.3060,0.3760,0.3399,0.3240,0.4120,0.2989,0.0174,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,horde,5000,300,1.6554,1.6270,1.8840,1.7032,1.6710,1.9480,1.5219,0.1276,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,horde,10000,300,3.7052,3.5070,4.5260,3.7689,3.5680,4.5950,3.4189,0.2783,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,horde,20000,300,6.9016,6.7510,8.1540,6.9648,6.8090,8.2270,6.3294,0.5640,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,gdscript,1000,300,28.1907,26.4670,38.6150,28.2480,26.5200,38.6730,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,gdscript,5000,177,170.0101,165.0040,216.8350,170.0979,165.0810,216.9220,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,gdscript,10000,84,360.6480,354.9550,417.8860,360.7362,355.0410,417.9850,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
+dense,gdscript,20000,32,958.5403,951.5760,1058.4790,958.6369,951.7010,1058.5880,-1.0000,-1.0000,4.7.2-stable (official),release,"Intel(R) Xeon(R) Processor @ 2.10GHz",4
